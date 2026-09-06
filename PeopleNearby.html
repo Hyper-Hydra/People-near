@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Доска заказов</title>
+    <style>
+        :root { --bg: #f4f4f9; --primary: #0056b3; --card: #fff; --text: #333; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); padding: 20px; max-width: 500px; margin: 0 auto; }
+        .card { background: var(--card); padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        input, select, button { width: 100%; padding: 12px; margin-top: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        button { background: var(--primary); color: white; border: none; cursor: pointer; font-weight: 600; margin-top: 15px; }
+        button:hover { opacity: 0.9; }
+        .order-item { border-left: 4px solid var(--primary); padding-left: 15px; margin-top: 15px; background: #fafafa; padding: 15px; border-radius: 0 8px 8px 0; }
+        .badge { background: #e2e3e5; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500;}
+        .price { color: #28a745; font-weight: bold; font-size: 14px; margin-left: 10px; }
+        .flex-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+        .flex-row label { flex: 1 1 30%; background: #eee; padding: 8px; border-radius: 6px; text-align: center; font-size: 14px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <h2>Создать заказ</h2>
+    <div class="card">
+        <input type="text" id="title" placeholder="Что нужно сделать? (напр., Купить энергетик)">
+        <select id="type">
+            <option value="shop">Сходить в магазин</option>
+            <option value="print">Распечатать</option>
+            <option value="help">Физическая помощь</option>
+        </select>
+        <input type="text" id="price" placeholder="Оплата (напр., 500 тг или кофе)">
+        <button onclick="addOrder()">Опубликовать заказ</button>
+    </div>
+
+    <h2>Мои уведомления</h2>
+    <div class="card">
+        <p style="font-size: 14px; color: #666; margin-top: 0;">Выберите типы заказов, о которых хотите получать Push-уведомления:</p>
+        <div class="flex-row">
+            <label><input type="checkbox" value="shop" class="sub-cb" checked> Магазин</label>
+            <label><input type="checkbox" value="print" class="sub-cb" checked> Печать</label>
+            <label><input type="checkbox" value="help" class="sub-cb"> Помощь</label>
+        </div>
+        <button onclick="requestNotificationPermission()" style="background: #28a745;">Разрешить Push в браузере</button>
+    </div>
+
+    <h2>Лента заказов</h2>
+    <div id="ordersList"></div>
+
+    <script>
+        // Исходное состояние базы данных (мок)
+        let orders = [
+            { id: 1, title: "Нужно распечатать 20 листов методички", type: "print", price: "200 тг" },
+            { id: 2, title: "Захватите колу из магазина", type: "shop", price: "Цена колы + 100 тг" }
+        ];
+
+        // Словарь для читабельного вывода типов
+        const categoryNames = { shop: "Магазин", print: "Печать", help: "Помощь" };
+
+        function renderOrders() {
+            const list = document.getElementById('ordersList');
+            list.innerHTML = '';
+            
+            orders.forEach(order => {
+                const div = document.createElement('div');
+                div.className = 'order-item';
+                div.innerHTML = `
+                    <div style="margin-bottom: 8px;"><strong>${order.title}</strong></div>
+                    <span class="badge">${categoryNames[order.type]}</span>
+                    <span class="price">💳 ${order.price}</span>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function addOrder() {
+            const title = document.getElementById('title').value;
+            const type = document.getElementById('type').value;
+            const price = document.getElementById('price').value;
+
+            if (!title) return alert("Введите описание заказа!");
+
+            const newOrder = { id: Date.now(), title, type, price };
+            orders.unshift(newOrder); // Добавляем в начало ленты
+            
+            // Очистка формы
+            document.getElementById('title').value = '';
+            document.getElementById('price').value = '';
+            
+            renderOrders();
+            checkNotifications(newOrder);
+        }
+
+        // Запрос прав на системные уведомления
+        function requestNotificationPermission() {
+            if ("Notification" in window) {
+                Notification.requestPermission().then(permission => {
+                    if (permission === "granted") alert("Push-уведомления успешно включены!");
+                });
+            }
+        }
+
+        // Проверка подписок и отправка пуша
+        function checkNotifications(order) {
+            const checkboxes = document.querySelectorAll('.sub-cb:checked');
+            const userSubscriptions = Array.from(checkboxes).map(cb => cb.value);
+
+            if (userSubscriptions.includes(order.type)) {
+                if (Notification.permission === "granted") {
+                    new Notification("Новый заказ: " + categoryNames[order.type], {
+                        body: `${order.title} | ${order.price}`
+                    });
+                } else {
+                    console.log("🔔 [Сработал триггер уведомления]:", order.title);
+                }
+            }
+        }
+
+        renderOrders();
+    </script>
+</body>
+</html>
