@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#ffffff" />
+<title>Общежитие №1</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { -webkit-tap-highlight-color: transparent; }
+  body { font-family: 'Inter', sans-serif; }
+  select { -webkit-appearance: none; appearance: none; }
+  .safe-bottom { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+  .tap:active { transform: scale(0.96); opacity: 0.85; }
+</style>
+</head>
+<body class="bg-white text-gray-900 overflow-x-hidden">
+  <div class="max-w-md mx-auto min-h-screen relative pb-32">
+    <header class="sticky top-0 z-20 bg-white/95 backdrop-blur px-4 pt-4 pb-3 flex items-center justify-center gap-3">
+      <div class="w-8 h-8 rounded bg-gray-200"></div>
+      <div class="text-[17px] font-medium text-gray-700">Общежитие №1</div>
+    </header>
+
+    <main id="screen-feed" class="px-4">
+      <section class="grid grid-cols-2 gap-4 mt-2">
+        <button type="button" class="tap text-left" onclick="filterCategory('Аренда')">
+          <div class="aspect-[4/3] rounded-2xl bg-gray-200 overflow-hidden relative">
+            <img src="https://images.unsplash.com/photo-1556740749-887f6717d7e4?w=400&q=80" class="w-full h-full object-cover">
+          </div>
+          <span class="block text-center text-[14px] mt-1">Аренда</span>
+        </button>
+        <button type="button" class="tap text-left" onclick="filterCategory('Такси')">
+          <div class="aspect-[4/3] rounded-2xl bg-gray-200 overflow-hidden relative">
+             <img src="https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=400&q=80" class="w-full h-full object-cover">
+          </div>
+          <span class="block text-center text-[14px] mt-1">Такси</span>
+        </button>
+        <button type="button" class="tap text-left" onclick="filterCategory('Доставка')">
+          <div class="aspect-[4/3] rounded-2xl bg-gray-200 overflow-hidden relative">
+            <img src="https://images.unsplash.com/photo-1586528116493-da8b2f9d5f4a?w=400&q=80" class="w-full h-full object-cover">
+          </div>
+          <span class="block text-center text-[14px] mt-1">Доставка</span>
+        </button>
+        <button type="button" class="tap text-left" onclick="filterCategory('Другое')">
+          <div class="aspect-[4/3] rounded-2xl bg-gray-200 flex items-center justify-center gap-2">
+            <span class="w-4 h-4 rounded-full bg-gray-500"></span>
+            <span class="w-4 h-4 rounded-full bg-gray-500"></span>
+            <span class="w-4 h-4 rounded-full bg-gray-500"></span>
+          </div>
+          <span class="block text-center text-[14px] mt-1">Другое</span>
+        </button>
+      </section>
+
+      <div class="mt-5">
+        <input id="search-input" type="text" placeholder="Поиск" class="w-full bg-gray-200 rounded-full px-4 py-2.5 outline-none text-[15px]" />
+      </div>
+
+      <div id="orders-grid" class="mt-5 grid grid-cols-2 gap-3"></div>
+      <div id="empty-state" class="hidden text-center mt-10 text-gray-500">Ничего не найдено</div>
+    </main>
+
+    <main id="screen-form" class="hidden px-4">
+      <div class="mt-2 bg-[#e3e3e3] rounded-3xl p-4 flex flex-col gap-3">
+        <textarea id="ad-text" rows="3" placeholder="Напишите объявление" class="w-full resize-none rounded-2xl bg-[#8fb4be] text-white p-3 outline-none"></textarea>
+        <select id="ad-type" class="w-full bg-white border border-gray-800 rounded-full px-4 py-2.5 outline-none">
+          <option value="" selected disabled>Выберите тип</option>
+          <option value="Аренда">Аренда</option>
+          <option value="Такси">Такси</option>
+          <option value="Доставка">Доставка</option>
+          <option value="Другое">Другое</option>
+        </select>
+        <div class="flex gap-3">
+          <select id="ad-time" class="w-full bg-white border border-gray-800 rounded-full px-4 py-2.5 outline-none">
+            <option value="" selected disabled>Время</option>
+            <option value="Сейчас">Сейчас</option>
+            <option value="Сегодня вечером">Сегодня вечером</option>
+            <option value="Завтра">Завтра</option>
+          </select>
+          <input id="ad-price" type="number" placeholder="Цена" class="w-full bg-white border border-gray-800 rounded-full px-4 py-2.5 outline-none" />
+        </div>
+        <button id="publish-btn" disabled class="tap w-full bg-[#4a7c8c] text-white rounded-full py-3 font-medium disabled:opacity-40">Опубликовать</button>
+      </div>
+    </main>
+  </div>
+
+  <div class="fixed bottom-0 inset-x-0 z-30 bg-white/80 backdrop-blur-sm">
+    <div class="max-w-md mx-auto p-4 safe-bottom">
+      <button id="nav-btn" type="button" class="tap w-full bg-[#4a7c8c] text-white rounded-full py-3.5 font-medium shadow-md">Выставить объявление</button>
+    </div>
+  </div>
+
+<script>
+  const API_URL = "http://127.0.0.1:8000";
+  let orders = [];
+  let activeCategory = null;
+
+  const screenFeed = document.getElementById('screen-feed');
+  const screenForm = document.getElementById('screen-form');
+  const navBtn = document.getElementById('nav-btn');
+  const ordersGrid = document.getElementById('orders-grid');
+  const searchInput = document.getElementById('search-input');
+  const emptyState = document.getElementById('empty-state');
+  const adText = document.getElementById('ad-text');
+  const adType = document.getElementById('ad-type');
+  const adTime = document.getElementById('ad-time');
+  const adPrice = document.getElementById('ad-price');
+  const publishBtn = document.getElementById('publish-btn');
+  let currentScreen = 'feed';
+
+  async function fetchOrders() {
+    try {
+      const res = await fetch(`${API_URL}/orders`);
+      orders = await res.json();
+      renderOrders();
+    } catch (e) {
+      console.error("Ошибка сервера");
+    }
+  }
+
+  function renderOrders() {
+    const query = searchInput.value.trim().toLowerCase();
+    const filtered = orders.filter(o => {
+      const matchQuery = `${o.text} ${o.author} ${o.price} ${o.time}`.toLowerCase().includes(query);
+      const matchCategory = activeCategory ? o.type === activeCategory : true;
+      return matchQuery && matchCategory;
+    });
+
+    ordersGrid.innerHTML = '';
+    emptyState.classList.toggle('hidden', filtered.length > 0);
+
+    filtered.forEach(order => {
+      ordersGrid.innerHTML += `
+        <div class="bg-[#bcbcbc] rounded-2xl p-3.5 min-h-[145px] flex flex-col justify-between">
+          <p class="font-medium text-[15px]">${order.text}</p>
+          <div>
+            <p class="text-[13px] text-gray-600">👤 ${order.author}</p>
+            <p class="text-[13px] text-gray-600">Время: ${order.time}</p>
+            <p class="text-[13px] text-green-700 font-medium">Цена: ${order.price} ₽</p>
+          </div>
+        </div>`;
+    });
+  }
+
+  window.filterCategory = function(cat) {
+    activeCategory = activeCategory === cat ? null : cat;
+    renderOrders();
+  };
+  searchInput.addEventListener('input', renderOrders);
+
+  navBtn.addEventListener('click', () => {
+    currentScreen = currentScreen === 'feed' ? 'form' : 'feed';
+    screenFeed.classList.toggle('hidden', currentScreen === 'form');
+    screenForm.classList.toggle('hidden', currentScreen !== 'form');
+    navBtn.textContent = currentScreen === 'feed' ? 'Выставить объявление' : 'Вернуться к объявлениям';
+  });
+
+  function checkForm() {
+    publishBtn.disabled = !(adText.value.trim() && adType.value && adTime.value && adPrice.value.trim());
+  }
+  [adText, adPrice].forEach(el => el.addEventListener('input', checkForm));
+  [adType, adTime].forEach(el => el.addEventListener('change', checkForm));
+
+  publishBtn.addEventListener('click', async () => {
+    await fetch(`${API_URL}/add_order`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text: adText.value.trim(),
+        type: adType.value,
+        time: adTime.value,
+        price: Number(adPrice.value),
+        author: window.Telegram?.WebApp?.initDataUnsafe?.user?.first_name || 'Вы'
+      })
+    });
+    adText.value = ''; adType.value = ''; adTime.value = ''; adPrice.value = '';
+    checkForm();
+    navBtn.click();
+    fetchOrders();
+  });
+
+  fetchOrders();
+</script>
+</body>
+</html>
