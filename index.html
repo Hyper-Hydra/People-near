@@ -83,6 +83,26 @@
         <button id="publish-btn" disabled class="tap w-full bg-[#4a7c8c] text-white rounded-full py-3 font-medium disabled:opacity-40">Опубликовать</button>
       </div>
     </main>
+    <!-- ================= ЭКРАН 3: ПРОФИЛЬ ================= -->
+    <main id="screen-profile" class="hidden px-4">
+      <div class="bg-gray-100 rounded-3xl p-5 flex flex-col items-center gap-3 text-center border border-gray-200">
+        <div id="user-avatar" class="w-20 h-20 rounded-full bg-[#4a7c8c] text-white flex items-center justify-center text-3xl font-bold">
+          ?
+        </div>
+        <div>
+          <h2 id="profile-name" class="text-xl font-bold">Имя пользователя</h2>
+          <p id="profile-username" class="text-gray-500 text-sm">@username</p>
+        </div>
+        /<!-- Редактирование комнаты -->
+        <div class="w-full mt-2 flex gap-2">
+          <input id="profile-room" type="text" placeholder="№ комнаты (напр. 412)" class="flex-1 bg-white border border-gray-300 rounded-xl px-4 py-2 text-sm outline-none" />
+          <button id="save-room-btn" class="bg-[#4a7c8c] text-white px-4 py-2 rounded-xl text-sm font-medium tap">Сохранить</button>
+        </div>
+      </div>
+
+      <h3 class="font-bold text-lg mt-6 mb-3">Мои объявления</h3>
+      <div id="my-orders-list" class="flex flex-col gap-3"></div>
+    </main>
   </div>
 
   <div class="fixed bottom-0 inset-x-0 z-30 bg-white/80 backdrop-blur-sm">
@@ -92,30 +112,50 @@
   </div>
 
 <script>
-  const API_URL = "http://127.0.0.1:8000";
-  let orders = [];
-  let activeCategory = null;
+  const API_URL = "http://127.0.0.1:8000"; // На сервере заменишь на адрес Cloudflare
 
+  // 1. Данные из Telegram WebApp API
+  const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+  const currentUser = {
+    id: tgUser?.id || 999999, // Для тестов в браузере
+    name: tgUser?.first_name || 'Локальный Пользователь',
+    username: tgUser?.username ? `@${tgUser.username}` : '@no_username'
+  };
+
+  // 2. Связка элементов DOM
   const screenFeed = document.getElementById('screen-feed');
   const screenForm = document.getElementById('screen-form');
+  const screenProfile = document.getElementById('screen-profile');
   const navBtn = document.getElementById('nav-btn');
   const ordersGrid = document.getElementById('orders-grid');
   const searchInput = document.getElementById('search-input');
   const emptyState = document.getElementById('empty-state');
+  
   const adText = document.getElementById('ad-text');
   const adType = document.getElementById('ad-type');
   const adTime = document.getElementById('ad-time');
   const adPrice = document.getElementById('ad-price');
   const publishBtn = document.getElementById('publish-btn');
-  let currentScreen = 'feed';
 
+  const profileName = document.getElementById('profile-name');
+  const profileUsername = document.getElementById('profile-username');
+  const profileRoom = document.getElementById('profile-room');
+  const userAvatar = document.getElementById('user-avatar');
+  const saveRoomBtn = document.getElementById('save-room-btn');
+  const myOrdersList = document.getElementById('my-orders-list');
+
+  let orders = [];
+  let activeCategory = null;
+  let currentScreen = 'feed'; // 'feed' | 'form' | 'profile'
+
+  // 3. Загрузка общей ленты
   async function fetchOrders() {
     try {
       const res = await fetch(`${API_URL}/orders`);
       orders = await res.json();
       renderOrders();
     } catch (e) {
-      console.error("Ошибка сервера");
+      console.error("Ошибка загрузки ленты");
     }
   }
 
@@ -135,7 +175,7 @@
         <div class="bg-[#bcbcbc] rounded-2xl p-3.5 min-h-[145px] flex flex-col justify-between">
           <p class="font-medium text-[15px]">${order.text}</p>
           <div>
-            <p class="text-[13px] text-gray-600">👤 ${order.author}</p>
+            <p class="text-[13px] text-gray-700 font-medium">👤 ${order.author}</p>
             <p class="text-[13px] text-gray-600">Время: ${order.time}</p>
             <p class="text-[13px] text-green-700 font-medium">Цена: ${order.price} ₽</p>
           </div>
@@ -149,19 +189,34 @@
   };
   searchInput.addEventListener('input', renderOrders);
 
+  // 4. Переключение экранов (Лента -> Форма -> Профиль -> Лента)
   navBtn.addEventListener('click', () => {
-    currentScreen = currentScreen === 'feed' ? 'form' : 'feed';
-    screenFeed.classList.toggle('hidden', currentScreen === 'form');
+    if (currentScreen === 'feed') {
+      currentScreen = 'form';
+      navBtn.textContent = 'К объявлениям';
+    } else if (currentScreen === 'form') {
+      currentScreen = 'profile';
+      navBtn.textContent = 'К ленте объявлений';
+      loadMyOrders();
+    } else {
+      currentScreen = 'feed';
+      navBtn.textContent = 'Выставить объявление';
+    }
+
+    screenFeed.classList.toggle('hidden', currentScreen !== 'feed');
     screenForm.classList.toggle('hidden', currentScreen !== 'form');
-    navBtn.textContent = currentScreen === 'feed' ? 'Выставить объявление' : 'Вернуться к объявлениям';
+    screenProfile.classList.toggle('hidden', currentScreen !== 'profile');
+    window.scrollTo(0, 0);
   });
 
+  // 5. Валидация формы
   function checkForm() {
     publishBtn.disabled = !(adText.value.trim() && adType.value && adTime.value && adPrice.value.trim());
   }
   [adText, adPrice].forEach(el => el.addEventListener('input', checkForm));
   [adType, adTime].forEach(el => el.addEventListener('change', checkForm));
 
+  // 6. Публикация заказа
   publishBtn.addEventListener('click', async () => {
     await fetch(`${API_URL}/add_order`, {
       method: "POST",
@@ -171,15 +226,87 @@
         type: adType.value,
         time: adTime.value,
         price: Number(adPrice.value),
-        author: window.Telegram?.WebApp?.initDataUnsafe?.user?.first_name || 'Вы'
+        author: currentUser.name,
+        author_id: currentUser.id
       })
     });
+
     adText.value = ''; adType.value = ''; adTime.value = ''; adPrice.value = '';
     checkForm();
-    navBtn.click();
+    navBtn.click(); // Возврат в ленту
     fetchOrders();
   });
 
+  // 7. Инициализация профиля
+  async function initProfile() {
+    profileName.textContent = currentUser.name;
+    profileUsername.textContent = currentUser.username;
+    userAvatar.textContent = currentUser.name[0].toUpperCase();
+
+    try {
+      const res = await fetch(`${API_URL}/sync_user`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          telegram_id: currentUser.id,
+          name: currentUser.name,
+          username: currentUser.username
+        })
+      });
+      const data = await res.json();
+      if (data.room) profileRoom.value = data.room;
+    } catch (e) {
+      console.error("Ошибка синхронизации профиля");
+    }
+  }
+
+  saveRoomBtn.addEventListener('click', async () => {
+    await fetch(`${API_URL}/update_profile`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        telegram_id: currentUser.id,
+        room: profileRoom.value.trim()
+      })
+    });
+    alert("Профиль обновлен!");
+  });
+
+  async function loadMyOrders() {
+    try {
+      const res = await fetch(`${API_URL}/my_orders/${currentUser.id}`);
+      const myOrders = await res.json();
+      
+      myOrdersList.innerHTML = '';
+      if (myOrders.length === 0) {
+        myOrdersList.innerHTML = `<p class="text-gray-400 text-sm">У вас нет активных объявлений</p>`;
+        return;
+      }
+
+      myOrders.forEach(o => {
+        myOrdersList.innerHTML += `
+          <div class="bg-gray-100 rounded-2xl p-3.5 flex justify-between items-center border border-gray-200">
+            <div>
+              <p class="font-medium text-sm">${o.text}</p>
+              <p class="text-xs text-gray-500">${o.type} • ${o.price} ₽</p>
+            </div>
+            <button onclick="deleteMyOrder(${o.id})" class="text-red-500 text-xs font-semibold p-2 tap">Удалить</button>
+          </div>`;
+      });
+    } catch (e) {
+      console.error("Ошибка загрузки своих объявлений");
+    }
+  }
+
+  window.deleteMyOrder = async function(orderId) {
+    if (!confirm("Удалить объявление?")) return;
+    await fetch(`${API_URL}/delete_order/${orderId}`, { method: "DELETE" });
+    loadMyOrders();
+    fetchOrders();
+  };
+
+  // Старт приложения
+  initProfile();
   fetchOrders();
 </script>
 </body>

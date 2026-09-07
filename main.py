@@ -5,7 +5,6 @@ import sqlite3
 
 app = FastAPI()
 
-# Разрешаем запросы из браузера
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -16,34 +15,95 @@ app.add_middleware(
 
 conn = sqlite3.connect("orders.db", check_same_thread=False)
 cursor = conn.cursor()
+
+# Создаем таблицы
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS users (
+        telegram_id INTEGER PRIMARY KEY,
+        name TEXT,
+        username TEXT,
+        room TEXT
+    )
+""")
+
 cursor.execute("""
     CREATE TABLE IF NOT EXISTS orders (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        text TEXT, author TEXT, type TEXT, time TEXT, price INTEGER
+        text TEXT, author TEXT, author_id INTEGER, type TEXT, time TEXT, price INTEGER
     )
 """)
 conn.commit()
 
+# Модели Pydantic
+class UserSync(BaseModel):
+    telegram_id: int
+    name: str
+    username: str | None = None
+
+class ProfileUpdate(BaseModel):
+    telegram_id: int
+    room: str
+
 class Order(BaseModel):
     text: str
     author: str
+    author_id: int
     type: str
     time: str
     price: int | None = None
 
-@app.post("/add_order")
-def add_order(order: Order):
-    cursor.execute("INSERT INTO orders (text, author, type, time, price) VALUES (?, ?, ?, ?, ?)",
-                   (order.text, order.author, order.type, order.time, order.price))
+# 1. Авторизация / Синхронизация профиля
+@app.post("/sync_user")
+def sync_user(user: UserSync):
+    cursor.execute("""
+        INSERT INTO users (telegram_id, name, username)
+        VALUES (?, ?, ?)
+        ON CONFLICT(telegram_id) DO UPDATE SET name=?, username=?
+    """, (user.telegram_id, user.name, user.username, user.name, user.username))
+    conn.commit()
+    
+    cursor.execute("SELECT room FROM users WHERE telegram_id = ?", (user.telegram_id,))
+    row = cursor.fetchone()
+    return {"room": row[0] if row and row[0] else ""}
+
+# 2. Обновление доп. инфо (комната)
+@app.post("/update_profile")
+def update_profile(data: ProfileUpdate):
+    cursor.execute("UPDATE users SET room = ? WHERE telegram_id = ?", (data.room, data.telegram_id))
     conn.commit()
     return {"status": "ok"}
 
+# 3. Публикация заказа с привязкой ID
+@app.post("/add_order")
+def add_order(order: Order):
+    cursor.execute("""
+        INSERT INTO orders (text, author, author_id, type, time, price)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (order.text, order.author, order.author_id, order.type, order.time, order.price))
+    conn.commit()
+    return {"status": "ok"}
+
+# 4. Получение ВСЕХ заказов
 @app.get("/orders")
 def get_orders():
-    cursor.execute("SELECT id, text, author, type, time, price FROM orders ORDER BY id DESC")
-    columns = ["id", "text", "author", "type", "time", "price"]
+    cursor.execute("SELECT id, text, author, author_id, type, time, price FROM orders ORDER BY id DESC")
+    columns = ["id", "text", "author", "author_id", "type", "time", "price"]
     return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+# 5. Мои объявления
+@app.get("/my_orders/{telegram_id}")
+def get_my_orders(telegram_id: int):
+    cursor.execute("SELECT id, text, type, time, price FROM orders WHERE author_id = ? ORDER BY id DESC", (telegram_id,))
+    columns = ["id", "text", "type", "time", "price"]
+    return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+# 6. Удаление объявления
+@app.delete("/delete_order/{order_id}")
+def delete_order(order_id: int):
+    cursor.execute("DELETE FROM orders WHERE id = ?", (order_id,))
+    conn.commit()
+    return {"status": "ok"}
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
