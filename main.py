@@ -127,6 +127,14 @@ def delete_order(order_id: int):
     conn.commit()
     return {"status": "ok"}
 
+# 7. Восстановление объявления из архива
+@app.post("/restore_order/{order_id}")
+def restore_order(order_id: int):
+    # Перезаписываем время создания на текущее, сбрасывая все таймеры
+    cursor.execute("UPDATE orders SET created_at = CURRENT_TIMESTAMP WHERE id = ?", (order_id,))
+    conn.commit()
+    return {"status": "ok"}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

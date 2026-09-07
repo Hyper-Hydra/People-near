@@ -93,7 +93,7 @@
           <h2 id="profile-name" class="text-xl font-bold">Имя пользователя</h2>
           <p id="profile-username" class="text-gray-500 text-sm">@username</p>
         </div>
-        /<!-- Редактирование комнаты -->
+        <!-- Редактирование комнаты -->
         <div class="w-full mt-2 flex gap-2">
           <input id="profile-room" type="text" placeholder="№ комнаты (напр. 412)" class="flex-1 bg-white border border-gray-300 rounded-xl px-4 py-2 text-sm outline-none" />
           <button id="save-room-btn" class="bg-[#4a7c8c] text-white px-4 py-2 rounded-xl text-sm font-medium tap">Сохранить</button>
@@ -284,23 +284,37 @@
       }
 
       myOrders.forEach(o => {
-        // Если объявление в архиве, делаем его бледным и добавляем плашку
         const archiveStyles = o.is_archived ? 'opacity-60 bg-gray-50' : 'bg-gray-100';
         const archiveBadge = o.is_archived ? '<span class="text-orange-600 font-bold ml-2">(В архиве)</span>' : '';
+        
+        // Отрисовываем кнопку восстановления ТОЛЬКО если объявление в архиве
+        const restoreBtn = o.is_archived 
+          ? `<button onclick="restoreMyOrder(${o.id})" class="text-green-600 bg-green-100 rounded-lg text-xs font-semibold px-3 py-1.5 tap mb-1">Восстановить</button>` 
+          : '';
 
         myOrdersList.innerHTML += `
           <div class="${archiveStyles} rounded-2xl p-3.5 flex justify-between items-center border border-gray-200 transition-all">
-            <div>
+            <div class="pr-2">
               <p class="font-medium text-sm">${o.text}</p>
               <p class="text-xs text-gray-500 mt-1">${o.type} • ${o.price} ₽ ${archiveBadge}</p>
             </div>
-            <button onclick="deleteMyOrder(${o.id})" class="text-red-500 text-xs font-semibold p-2 tap">Удалить</button>
+            <div class="flex flex-col items-end">
+              ${restoreBtn}
+              <button onclick="deleteMyOrder(${o.id})" class="text-red-500 bg-red-50 rounded-lg text-xs font-semibold px-3 py-1.5 tap">Удалить</button>
+            </div>
           </div>`;
       });
     } catch (e) {
       console.error("Ошибка загрузки своих объявлений");
     }
   }
+
+  // Новая функция вызова бэкенда для обновления времени
+  window.restoreMyOrder = async function(orderId) {
+    await fetch(`${API_URL}/restore_order/${orderId}`, { method: "POST" });
+    loadMyOrders(); // Перерисовываем профиль
+    fetchOrders();  // Незаметно обновляем общую ленту в фоне
+  };
 
   window.deleteMyOrder = async function(orderId) {
     if (!confirm("Удалить объявление?")) return;
