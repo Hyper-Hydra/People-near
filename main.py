@@ -16,7 +16,7 @@ app.add_middleware(
 conn = sqlite3.connect("orders.db", check_same_thread=False)
 cursor = conn.cursor()
 
-# Создаем таблицы
+# Создаем таблицы (добавлено поле created_at для отслеживания времени)
 cursor.execute("""
     CREATE TABLE IF NOT EXISTS users (
         telegram_id INTEGER PRIMARY KEY,
@@ -29,7 +29,8 @@ cursor.execute("""
 cursor.execute("""
     CREATE TABLE IF NOT EXISTS orders (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        text TEXT, author TEXT, author_id INTEGER, type TEXT, time TEXT, price INTEGER
+        text TEXT, author TEXT, author_id INTEGER, type TEXT, time TEXT, price INTEGER,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
 """)
 conn.commit()
@@ -83,18 +84,40 @@ def add_order(order: Order):
     conn.commit()
     return {"status": "ok"}
 
-# 4. Получение ВСЕХ заказов
+# 4. Получение ВСЕХ заказов (Лента: только свежие, автоудаление старых)
 @app.get("/orders")
 def get_orders():
-    cursor.execute("SELECT id, text, author, author_id, type, time, price FROM orders ORDER BY id DESC")
+    # Очистка базы от заказов старше 2 дней
+    cursor.execute("DELETE FROM orders WHERE created_at <= datetime('now', '-2 days')")
+    conn.commit()
+
+    # Выдача объявлений, которым меньше 1 дня
+    cursor.execute("""
+        SELECT id, text, author, author_id, type, time, price 
+        FROM orders 
+        WHERE created_at > datetime('now', '-1 day')
+        ORDER BY id DESC
+    """)
     columns = ["id", "text", "author", "author_id", "type", "time", "price"]
     return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
-# 5. Мои объявления
+# 5. Мои объявления (Профиль: все заказы пользователя с флагом архива)
 @app.get("/my_orders/{telegram_id}")
 def get_my_orders(telegram_id: int):
-    cursor.execute("SELECT id, text, type, time, price FROM orders WHERE author_id = ? ORDER BY id DESC", (telegram_id,))
-    columns = ["id", "text", "type", "time", "price"]
+    # Очистка базы от заказов старше 2 дней
+    cursor.execute("DELETE FROM orders WHERE created_at <= datetime('now', '-2 days')")
+    conn.commit()
+
+    # Выдача всех записей с вычислением флага is_archived
+    cursor.execute("""
+        SELECT id, text, type, time, price, 
+               CASE WHEN created_at <= datetime('now', '-1 day') THEN 1 ELSE 0 END as is_archived
+        FROM orders 
+        WHERE author_id = ? 
+        ORDER BY id DESC
+    """, (telegram_id,))
+    
+    columns = ["id", "text", "type", "time", "price", "is_archived"]
     return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
 # 6. Удаление объявления
