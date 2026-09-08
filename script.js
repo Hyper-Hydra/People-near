@@ -102,22 +102,31 @@ function renderOrders() {
   filtered.forEach(order => {
     const isOwn = Number(order.author_id) === Number(currentUser.id);
     const initial = esc((order.author || '?').charAt(0).toUpperCase());
+
     ordersGrid.innerHTML += `
       <button type="button" onclick="openOrder(${order.id})"
-        class="tap text-left order-card rounded-2xl p-3.5 min-h-[165px] flex flex-col justify-between w-full relative">
-        ${isOwn ? '<span class="absolute top-2.5 right-2.5 text-[10px] bg-gray-100 text-gray-600 rounded-full px-2 py-0.5">Моё</span>' : ''}
-        <div>
-          <p class="font-semibold text-[15px] leading-5 line-clamp-2 pr-8">${esc(order.title)}</p>
-          <p class="text-[13px] text-gray-500 mt-1 line-clamp-3">${esc(order.description)}</p>
-        </div>
-        <div class="mt-2">
-          <div class="flex items-center gap-1.5 min-w-0">
-            <span class="shrink-0 w-5 h-5 rounded-full bg-[var(--lavender)] text-[var(--lavender-text)] text-[10px] font-bold flex items-center justify-center">${initial}</span>
-            <span class="text-[12px] text-gray-500 truncate">${esc(order.author)}</span>
+        class="tap text-left w-full bg-white rounded-[24px] border border-gray-400 px-5 py-2.5 shadow-[0px_4px_10px_rgba(0,0,0,0.15)] relative transition-all">
+        
+        ${isOwn ? '<span class="absolute top-4 right-5 text-[10px] bg-gray-100 text-gray-600 rounded-full px-2 py-0.5 font-medium">Моё</span>' : ''}
+        
+        <!-- Название заказа -->
+        <h4 class="font-bold text-[16px] leading-tight text-black pr-8">${esc(order.title)}</h4>
+        
+        <!-- Описание -->
+        <p class="text-[14ggpx] text-gray-800 mt-1 leading-snug line-clamp-2">${esc(order.description)}</p>
+        
+        <!-- Подвал: Автор и Цена -->
+        <div class="mt-2.5 flex items-center justify-between gap-2">
+          <!-- Автор -->
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="shrink-0 w-7 h-7 rounded-full bg-[var(--lavender)] text-[var(--lavender-text)] text-[12px] font-bold flex items-center justify-center">${initial}</span>
+            <span class="text-[13px] text-gray-600 truncate">${esc(order.author)}</span>
+            ${order.response_count ? `<span class="text-[12px] text-gray-400 ml-1">🙋 ${order.response_count}</span>` : ''}
           </div>
-          <div class="flex items-center justify-between gap-2 mt-1.5">
-            <span class="text-[12px] text-gray-500">🙋 ${order.response_count || 0}</span>
-            <span class="text-[13px] price-tag font-medium">Цена: ${Number(order.price).toLocaleString('ru-RU')} ₽</span>
+          
+          <!-- Цена -->
+          <div class="text-[15px] text-gray-800 shrink-0">
+            Цена: <span class="text-[var(--accent)]">${Number(order.price).toLocaleString('ru-RU')} р.</span>
           </div>
         </div>
       </button>`;
@@ -125,7 +134,22 @@ function renderOrders() {
 }
 
 window.filterCategory = function(cat) {
+  // 1. Устанавливаем или сбрасываем активную категорию
   activeCategory = activeCategory === cat ? null : cat;
+  
+  // 2. Управляем визуальным выделением (работает с новыми дата-атрибутами из HTML)
+  const buttons = document.querySelectorAll('.category-btn');
+  buttons.forEach(btn => {
+    const bgDiv = btn.querySelector('div'); 
+    
+    if (btn.dataset.category === activeCategory) {
+      bgDiv.classList.add('ring-4', 'ring-[var(--accent)]', 'ring-offset-2', 'ring-offset-white');
+    } else {
+      bgDiv.classList.remove('ring-4', 'ring-[var(--accent)]', 'ring-offset-2', 'ring-offset-white');
+    }
+  });
+
+  // 3. Обновляем ленту заказов на основе нового состояния
   renderOrders();
 };
 

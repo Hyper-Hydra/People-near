@@ -20,40 +20,66 @@
 
     <!-- ЛЕНТА -->
     <main id="screen-feed" class="px-4">
-      <section class="grid grid-cols-2 gap-4 mt-2">
-        <button type="button" class="tap text-left" onclick="filterCategory('Аренда')">
-          <div class="aspect-[4/3] rounded-2xl bg-[var(--tile-bg)] overflow-hidden relative">
-            <img src="./arenda.jpg" class="w-full h-full object-cover">
+      <!-- Сетка 3 колонки в ширину -->
+      <section class="grid grid-cols-3 gap-3 mt-2">
+        
+        <!-- СТРОКА 1 -->
+        <!-- Левый фильтр: занимает 2 колонки из 3 -->
+        <button type="button" class="tap text-left category-btn col-span-2" data-category="Аренда" onclick="filterCategory('Аренда')">
+          <div class="h-28 rounded-2xl bg-[var(--tile-bg)] overflow-hidden relative transition-all duration-200">
+            <img src="./arenda.jpg" class="w-full h-full object-cover" alt="Аренда">
           </div>
-          <span class="block text-center text-[14px] mt-1">Аренда</span>
+          <span class="block text-center mt-1 text-sm font-medium">Аренда</span>
         </button>
-        <button type="button" class="tap text-left" onclick="filterCategory('Аренда')">
-          <div class="aspect-[4/3] rounded-2xl bg-[var(--tile-bg)] overflow-hidden relative">
-            <img src="./taxi.jpg" class="w-full h-full object-cover">
+        
+        <!-- Правый фильтр: занимает 1 колонку из 3 -->
+        <button type="button" class="tap text-left category-btn col-span-1" data-category="Такси" onclick="filterCategory('Такси')">
+          <div class="h-28 rounded-2xl bg-[var(--tile-bg)] overflow-hidden relative transition-all duration-200">
+            <img src="./taxi.jpg" class="w-full h-full object-cover" alt="Такси">
           </div>
-          <span class="block text-center text-[14px] mt-1">Такси</span>
+          <span class="block text-center mt-1 text-sm font-medium">Такси</span>
         </button>
-        <button type="button" class="tap text-left" onclick="filterCategory('Доставка')">
-          <div class="aspect-[4/3] rounded-2xl bg-[var(--tile-bg)] overflow-hidden relative">
-            <img src="./dostavka.jpg" class="w-full h-full object-cover">
+        
+        <!-- СТРОКА 2 -->
+        <!-- Левый фильтр: занимает 2 колонки из 3 -->
+        <button type="button" class="tap text-left category-btn col-span-2" data-category="Доставка" onclick="filterCategory('Доставка')">
+          <div class="h-28 rounded-2xl bg-[var(--tile-bg)] overflow-hidden relative transition-all duration-200">
+            <img src="./dostavka.jpg" class="w-full h-full object-cover" alt="Доставка">
           </div>
-          <span class="block text-center text-[14px] mt-1">Доставка</span>
+          <span class="block text-center mt-1 text-sm font-medium">Доставка</span>
         </button>
-        <button type="button" class="tap text-left" onclick="filterCategory('Другое')">
-          <div class="aspect-[4/3] rounded-2xl bg-[var(--tile-bg)] flex items-center justify-center gap-2">
+        
+        <!-- Правый фильтр: занимает 1 колонку из 3 -->
+        <button type="button" class="tap text-left category-btn col-span-1" data-category="Другое" onclick="filterCategory('Другое')">
+          <div class="h-28 rounded-2xl bg-[var(--tile-bg)] flex items-center justify-center gap-2 transition-all duration-200">
             <span class="w-3.5 h-3.5 rounded-full bg-gray-600"></span>
             <span class="w-3.5 h-3.5 rounded-full bg-gray-600"></span>
             <span class="w-3.5 h-3.5 rounded-full bg-gray-600"></span>
           </div>
-          <span class="block text-center text-[14px] mt-1">Другое</span>
+          <span class="block text-center mt-1 text-sm font-medium">Другое</span>
         </button>
+
       </section>
 
-      <div class="mt-5">
-        <input id="search-input" type="text" placeholder="Поиск" class="w-full bg-[var(--input-bg)] rounded-full px-4 py-2.5 outline-none text-[15px]" />
+      <div class="relative w-full">
+        <input 
+          id="search-input" 
+          type="text" 
+          placeholder="Поиск" 
+          class="w-full bg-[var(--input-bg)] rounded-full pl-4 pr-12 py-2.5 outline-none text-[15px]" 
+        />
+  
+        <div class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
+          <img 
+            src="loupe.svg" 
+            alt="Лупа" 
+            class="w-5 h-5 object-contain" 
+          />
+        </div>
       </div>
 
-      <div id="orders-grid" class="mt-5 grid grid-cols-2 gap-3"></div>
+      <!-- Контейнер ленты заказов (строчный вид) -->
+      <div id="orders-grid" class="mt-5 flex flex-col gap-3.5"></div>
       <div id="empty-state" class="hidden text-center mt-10 text-gray-500">Ничего не найдено</div>
     </main>
 

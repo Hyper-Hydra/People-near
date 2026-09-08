@@ -1,14 +1,37 @@
+/* montserrat-regular - cyrillic_latin */
+@font-face {
+  font-display: swap; /* Check https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/font-display for other options. */
+  font-family: 'Montserrat';
+  font-style: normal;
+  font-weight: 400;
+  src: url('./fonts/montserrat-v31-cyrillic_latin-regular.woff2') format('woff2'); /* Chrome 36+, Opera 23+, Firefox 39+, Safari 12+, iOS 10+ */
+}
+/* montserrat-600 - cyrillic_latin */
+@font-face {
+  font-display: swap; /* Check https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/font-display for other options. */
+  font-family: 'Montserrat';
+  font-style: normal;
+  font-weight: 600;
+  src: url('./fonts/montserrat-v31-cyrillic_latin-600.woff2') format('woff2'); /* Chrome 36+, Opera 23+, Firefox 39+, Safari 12+, iOS 10+ */
+}
+
 :root{
   --accent:#7CADE0;
   --accent-dark:#5C90C7;
   --tile-bg:#E4E4E4;
   --card-border:#E3E3E3;
-  --input-bg:#E7E7E7;
+  --input-bg:#D9D9D9;
   --lavender:#D9D3F0;
   --lavender-text:#4B3F72;
 }
 * { -webkit-tap-highlight-color: transparent; }
-body { font-family: 'Inter', sans-serif; }
+body {
+  font-family: 'Montserrat', sans-serif;
+  font-style: normal;
+  font-size: 15px;
+  font-weight: normal;
+
+}
 select { -webkit-appearance: none; appearance: none; }
 .safe-bottom { padding-bottom: max(1.1rem, env(safe-area-inset-bottom)); }
 .tap:active { transform: scale(0.96); opacity: 0.85; }
